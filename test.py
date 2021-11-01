@@ -35,34 +35,33 @@ class pdf_generator:
         array = ['iç montaj', 'kalite güvence', 'plastik spiral ve çelik spiral', 'sayımhane ', 'idari işler', 'kalıphane', 'dsdsd']
 
         counterx = [0,0]
-        countery = [0,0]
+        countery = 0
         name_counter =0
         header_len = 16
+        space = 20
         self.pdf.set_font("Arial", size=8)
         for data_names in new_data:
-            print(countery[0] +len(new_data[array[name_counter]]) * 5+ header_len, "--",data_names)
 
-            if ((countery[0] +len(new_data[array[name_counter]]) * 5 + header_len)> 210):
+            if ((countery +len(new_data[array[name_counter]]) * 5 + header_len+ space)> 200):
                 if counterx[0] == 0:
-                    countery = [0,0]
+                    countery = 0
                     counterx = [1,150]
                 else:
-                    countery = [0, 0]
+                    countery = 0
                     counterx = [0, 0]
                     self.pdf.add_page()
                     self.create_header()
 
-
-
-            self.create_work_header(sec_names, data_names,ykaydirma=countery[1],xkaydirma=counterx[1])
-            self.create_wowk_lines(countery[1]*2, counterx[1]*2)
+            self.create_work_header(sec_names, data_names,ykaydirma=countery,xkaydirma=counterx[1])
+            self.create_wowk_lines(countery*2, counterx[1]*2,dikey_eksen_uzunlugu=len(new_data[array[name_counter]]) * 5)
 
             for data in new_data[data_names]:
-                self.write_text(data,ykaydirma=countery[0],xkaydirma=counterx[1])
-                countery[0] += 5
+                print(len(new_data[array[name_counter]]) * 5)
+                self.write_text(data,ykaydirma=countery,xkaydirma=counterx[1])
+                countery += 5
 
-            countery[1] = countery[0]+20
-            countery[0] += 20
+            countery += 20
+
             name_counter +=1
 
 
@@ -96,16 +95,18 @@ class pdf_generator:
         self.pdf.line(112+xkaydirma, 43+ykaydirma, 112+xkaydirma, 53+ykaydirma+dikey_eksen_uzunlugu)
         self.pdf.line(142+xkaydirma, 37+ykaydirma, 142+xkaydirma, 53+ykaydirma+dikey_eksen_uzunlugu)
 
-    def write_text(self, sec_names, ykaydirma=0, xkaydirma=0, dikey_eksen_uzunlugu=0):
+    def write_text(self, sec_names, ykaydirma=0, xkaydirma=0):
         self.pdf.set_font_size(8)
         self.pdf.text(5 + xkaydirma, 57 + ykaydirma, (sec_names[0]).translate(self.Tr2Eng))
         self.pdf.text(15 + xkaydirma, 57 + ykaydirma, (sec_names[1]).translate(self.Tr2Eng))
         self.pdf.set_font_size(6)
         self.pdf.text(35 + xkaydirma, 57 + ykaydirma, (sec_names[2]).translate(self.Tr2Eng))
         self.pdf.set_font_size(8)
-        self.pdf.text(63 + xkaydirma, 57 + ykaydirma, (sec_names[4]).translate(self.Tr2Eng))
-        self.pdf.text(75 + xkaydirma, 57 + ykaydirma, (sec_names[5]).translate(self.Tr2Eng))
+        self.pdf.text(60 + xkaydirma, 57 + ykaydirma, (sec_names[4]).translate(self.Tr2Eng))
+        self.pdf.text(80 + xkaydirma, 57 + ykaydirma, (sec_names[5]).translate(self.Tr2Eng))
         self.pdf.text(115 + xkaydirma, 57 + ykaydirma, (sec_names[6]).translate(self.Tr2Eng))
+        self.pdf.line(2 + xkaydirma, 58 + ykaydirma, 142 + xkaydirma, 58 + ykaydirma)
+
 
         return (57+ykaydirma)
     def create_header(self):
