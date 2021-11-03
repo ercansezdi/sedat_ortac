@@ -4,7 +4,7 @@ from tkinter import *
 import pandas as pd
 from tkinter.filedialog import askopenfile
 from tkinter import *
-from tkinter import ttk
+from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageTk
 import sqlite3
 import os
@@ -97,17 +97,14 @@ class tkinterGUI(Frame):
         self.canvas.create_window(920, y_column + y_plus-5, anchor=NW, window=self.add)
 
         #------------------------------------------------------------------------------------------------------------------------------------------
-        self.excel_1 = Button(self, text="Import Exel", font=("Helvatica", 10), command=self.next_page)
+        self.excel_1 = Button(self, text="Import Exel", font=("Helvatica", 10), command=self.import_excel)
         self.canvas.create_window(10, 855, anchor=NW, window=self.excel_1)
 
         self.excel_2 = Button(self, text="Export Exel -1", font=("Helvatica", 10), command=self.export_excel_1) # +
         self.canvas.create_window(120, 855, anchor=NW, window=self.excel_2)
 
-        self.excel_3 = Button(self, text="Export Exel -2", font=("Helvatica", 10), command=self.next_page)
-        self.canvas.create_window(245, 855, anchor=NW, window=self.excel_3)
-
         self.pdf_1 = Button(self, text="Export Pdf", font=("Helvatica", 10), command=self.export_pdf)
-        self.canvas.create_window(370, 855, anchor=NW, window=self.pdf_1)
+        self.canvas.create_window(245, 855, anchor=NW, window=self.pdf_1)
         # ------------------------------------------------------------------------------------------------------------------------------------------
 
         self.next_button = Button(self, text=">", font=("Helvatica", 10), command=self.next_page)
@@ -293,8 +290,6 @@ class tkinterGUI(Frame):
 
                 self.text_id = self.canvas.create_line(1, 151 + counter, 998, 151 + counter, fill="black", width=2)
                 self.page_id_counter.append(self.text_id)
-
-
                 if counter > 680:
                     break
                 counter += 30
@@ -339,59 +334,120 @@ class tkinterGUI(Frame):
             self.dates[6].append(i[6])
         self.win = Toplevel()
         self.win.wm_title("Export Exel")
-        self.win.geometry("300x100")
+        self.win.geometry("565x95")
 
         self.exel_location = Label(self.win, text="Dosya Kayıt Konumu ")
         self.exel_location.grid(row=0, column=0)
         self.exel_location_entry = Entry(self.win)
-        self.exel_location_entry.grid(row=0, column=1)
+        self.exel_location_entry.grid(row=0, column=1,ipadx=80,ipady=4)
         self.exel_location_entry.insert(0,os.getcwd())
+        self.select_location_exel = Button(self.win, text="Konum Seç", command=self.choose_2)
+        self.select_location_exel.grid(row=0, column=2, ipadx=2, ipady=1)
 
 
         self.exel_name = Label(self.win, text = "Dosyanın ismi ")
         self.exel_name.grid(row=1,column=0)
         self.exel_name_entry = Entry(self.win)
-        self.exel_name_entry.grid(row=1,column=1)
-        self.exel_name_entry.insert(0,datetime.now().strftime("%d-%m-%y_%H:%M:%S"))
+        self.exel_name_entry.grid(row=1,column=1,ipadx=80,ipady=4)
+        self.exel_name_entry.insert(0,datetime.now().strftime("%d-%m-%y_%H:%M:%S.xlsx"))
         self.exel_name_button = Button(self.win,text = "Export",command=self.export_1)
         self.exel_name_button.grid(row=2,column=0,columnspan=2)
+
+
     def export_1(self):
         data = {}
         for i in range(0,len(self.columns)):
             data[self.columns[i]] = self.dates[i]
         df = pd.DataFrame(data,columns=self.columns)
-        location = str(self.exel_location_entry.get()) + "/" + str(self.exel_name_entry.get()) + ".xlsx"
+        location = str(self.exel_location_entry.get()) + "/" + str(self.exel_name_entry.get())
         df.to_excel(location, index=False, header=True)
         self.win.destroy()
+        messagebox.showinfo("showinfo", location + " dışarıya aktarıldı.")
 
     def export_pdf(self):
 
         self.win = Toplevel()
         self.win.wm_title("Export Pdf")
-        self.win.geometry("500x100")
+        self.win.geometry("565x95")
 
         self.pdf_location = Label(self.win, text="Dosya Kayıt Konumu ")
         self.pdf_location.grid(row=0, column=0)
         self.pdf_location_entry = Entry(self.win)
-        self.pdf_location_entry.grid(row=0, column=1,ipadx=95)
+        self.pdf_location_entry.grid(row=0, column=1,ipadx=80,ipady=4)
         self.pdf_location_entry.insert(0, os.getcwd())
 
         self.pdf_name = Label(self.win, text="Dosyanın ismi ")
         self.pdf_name.grid(row=1, column=0)
         self.pdf_name_entry = Entry(self.win)
-        self.pdf_name_entry.grid(row=1, column=1,ipadx=95)
+        self.pdf_name_entry.grid(row=1, column=1,ipadx=80,ipady=4)
+
         self.pdf_name_entry.insert(0, str(datetime.now().strftime("%d-%m-%y_%H:%M:%S.pdf")))
         self.pdf_name_button = Button(self.win, text="Export", command=self.export_2)
         self.pdf_name_button.grid(row=2, column=0, columnspan=2)
+        self.select_location = Button(self.win, text ="Konum Seç" , command = self.choose)
+        self.select_location.grid(row=0,column=2,ipadx=2,ipady=1)
+    def choose_2(self):
+        folder_selected = filedialog.askdirectory()
+        if folder_selected == () or folder_selected == self.exel_location_entry.get():
+            pass
+        else:
+            self.exel_location_entry.delete(0, "end")
+            self.exel_location_entry.insert(0, folder_selected)
+    def choose(self):
+        folder_selected = filedialog.askdirectory()
+        if folder_selected == () or folder_selected == self.pdf_location_entry.get():
+            pass
+        else:
+            self.pdf_location_entry.delete(0,"end")
+            self.pdf_location_entry.insert(0,folder_selected)
     def export_2(self):
         data = self.database.read_draw_log()
-        print(data)
         pdf = pdf_generator(data)
         location = str(self.pdf_location_entry.get()) + "/" + str(self.pdf_name_entry.get())
         if ".pdf" in location:
             pdf.create_pdf(location)
         else:
             pdf.create_pdf(location+".pdf")
+        self.win.destroy()
+
+        messagebox.showinfo("showinfo", location +" dışarıya aktarıldı.")
+
+    def import_excel(self):
+        q1= messagebox.askquestion("askquestion", "Eski veritabanları temizlensin mi ? ")
+        if q1 == "yes":
+            q2 = messagebox.askquestion("askquestion", "veritabanlarını exel olarak dışarı aktarılsın mı?")
+            if q2 == "yes":
+                self.export_excel_1()
+                self.database.delete_all_database_for_user()
+                self.import_xlrd()
+            else:
+                self.database.delete_all_database_for_user()
+                self.import_xlrd()
+        else:
+            self.import_xlrd()
+
+
+    def import_xlrd(self):
+        file = askopenfile(mode='r', filetypes=[("Excel Files", ".xlsx"), ("all files", ".*")])
+        if file is not (None):
+            file = str(file).split("'")[1]
+            data = pd.read_excel(file)
+            df = pd.DataFrame(data)
+            array = []
+            for i in df:
+                array.append(i)
+            length = len(df[array[0]])
+            for i in range(0, length):
+                self.database.write_database(
+                    [int(df[array[0]][i]), df[array[1]][i], df[array[2]][i], df[array[3]][i], df[array[4]][i],
+                     df[array[5]][i], df[array[6]][i]])
+            self.database.rebuild_database('kayitlar/logs/config0.db')
+            self.write_screen()
+
+
+
+
+
 
 class database:
     def __init__(self):
@@ -411,7 +467,6 @@ class database:
             veri.execute("""CREATE TABLE data ('""" + name_array[i] + """'     TEXT);""")
             baglan.commit()
             baglan.close()
-
         baglan = sqlite3.connect('kayitlar/logs/config0.db')
         veri = baglan.cursor()
         veri.execute("""CREATE TABLE data (
@@ -490,15 +545,16 @@ class database:
         else:
             return res[counter]
     def read_draw_log(self):
-        baglan = sqlite3.connect('kayitlar/logs/config0.db')
-        veri = baglan.cursor()
-        res = veri.execute("SELECT * FROM data").fetchall()
-        baglan.commit()
-        baglan.close()
-        if len(res) == 0:
-            return []
-        else:
+        try:
+            baglan = sqlite3.connect('kayitlar/logs/config0.db')
+            veri = baglan.cursor()
+            res = veri.execute("SELECT * FROM data").fetchall()
+            baglan.commit()
+            baglan.close()
             return res
+        except:
+            return []
+
     def delete_database_for_user(self,id):
         #try:
         baglan = sqlite3.connect('kayitlar/logs/config0.db')
@@ -511,6 +567,22 @@ class database:
         #except:
         #    return False
         #return True
+    def delete_all_database_for_user(self):
+        delete = []
+        baglan = sqlite3.connect('kayitlar/logs/config0.db')
+        veri = baglan.cursor()
+        data = veri.execute("select * from data")
+        for i in data:
+            delete.append(i)
+        baglan.commit()
+        baglan.close()
+        baglan = sqlite3.connect('kayitlar/logs/config0.db')
+        veri = baglan.cursor()
+        for id in delete:
+            sql_update_query = """DELETE from data where rowid = ?"""
+            veri.execute(sql_update_query, (id[0],))
+        baglan.commit()
+        baglan.close()
     def rebuild_database(self,address):
         data_ = []
         baglan = sqlite3.connect(address)
@@ -523,7 +595,7 @@ class database:
         baglan = sqlite3.connect(address)
         veri = baglan.cursor()
         for i in data_:
-            veri.execute("Delete from data where No='" + i[0] + "'")
+            veri.execute("Delete from data where No='" + str(i[0]) + "'")
         baglan.commit()
         baglan.close()
         counter = 1
@@ -576,7 +648,6 @@ class pdf_generator:
         self.pdf.set_font_size(8)
         dikey_extra = 0
         for data_names in new_data:
-            print(new_data)
             if ((countery +len(new_data[array[name_counter]]) * 5 + header_len + space)> 200):
                 if counterx[0] == 0:
                     countery = 0
