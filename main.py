@@ -6,13 +6,12 @@ from tkinter.filedialog import askopenfile
 from tkinter import *
 from tkinter import ttk
 from PIL import Image, ImageTk
-from PIL import ImageTk
 import sqlite3
 import os
 from math import ceil
 from functools import partial
-import time
 from datetime import datetime
+from fpdf import FPDF
 class tkinterGUI(Frame):
     def __init__(self,parent,parent2):
         Frame.__init__(self,parent)
@@ -208,7 +207,6 @@ class tkinterGUI(Frame):
             self.combobox_items[args].append(first)
             for i in df[str(first)]:
                 self.combobox_items[args].append(str(i))
-        print(self.combobox_items)
         if args == self.columns[1]:
             self.database.write_exel_data(1,self.combobox_items[args])
         elif args == self.columns[2]:
@@ -322,7 +320,7 @@ class tkinterGUI(Frame):
 
 
     def anytihng(self):
-        print(1)
+        pass
     def clear_database(self):
         #clear all database
         pass
@@ -339,7 +337,6 @@ class tkinterGUI(Frame):
             self.dates[4].append(i[4])
             self.dates[5].append(i[5])
             self.dates[6].append(i[6])
-        print(data)
         self.win = Toplevel()
         self.win.wm_title("Export Exel")
         self.win.geometry("300x100")
@@ -368,7 +365,34 @@ class tkinterGUI(Frame):
         self.win.destroy()
 
     def export_pdf(self):
-        pass
+
+        self.win = Toplevel()
+        self.win.wm_title("Export Pdf")
+        self.win.geometry("500x100")
+
+        self.pdf_location = Label(self.win, text="Dosya Kayıt Konumu ")
+        self.pdf_location.grid(row=0, column=0)
+        self.pdf_location_entry = Entry(self.win)
+        self.pdf_location_entry.grid(row=0, column=1,ipadx=95)
+        self.pdf_location_entry.insert(0, os.getcwd())
+
+        self.pdf_name = Label(self.win, text="Dosyanın ismi ")
+        self.pdf_name.grid(row=1, column=0)
+        self.pdf_name_entry = Entry(self.win)
+        self.pdf_name_entry.grid(row=1, column=1,ipadx=95)
+        self.pdf_name_entry.insert(0, str(datetime.now().strftime("%d-%m-%y_%H:%M:%S.pdf")))
+        self.pdf_name_button = Button(self.win, text="Export", command=self.export_2)
+        self.pdf_name_button.grid(row=2, column=0, columnspan=2)
+    def export_2(self):
+        data = self.database.read_draw_log()
+        print(data)
+        pdf = pdf_generator(data)
+        location = str(self.pdf_location_entry.get()) + "/" + str(self.pdf_name_entry.get())
+        if ".pdf" in location:
+            pdf.create_pdf(location)
+        else:
+            pdf.create_pdf(location+".pdf")
+
 class database:
     def __init__(self):
         self.create_folders()
@@ -512,6 +536,312 @@ class database:
             counter += 1
         baglan.commit()
         baglan.close()
+
+
+class pdf_generator:
+
+    def __init__(self,data):
+        self.data= data
+        self.pdf = FPDF(orientation='L', unit='mm', format='A4')
+        self.pdf.set_font("Arial")
+        self.Tr2Eng = str.maketrans("çÇğGıİöÖşŞüÜ", "cCgGiIoOsSuU")
+
+    def ayristirma(self,data):
+        bolum_adlari = []
+        for i in data:
+            if i[3] not in bolum_adlari:
+                bolum_adlari.append(i[3])
+        ayristirlmis_data = {}
+        for i in bolum_adlari:
+            ayristirlmis_data[i] = []
+        for i in data:
+            ayristirlmis_data[i[3]].append(i)
+        return ayristirlmis_data
+    def create_pdf(self,name, location=os.getcwd()):
+        self.pdf.add_page()
+        self.create_header()
+        new_data = self.ayristirma(self.data)
+        sec_names = ["Bölüm", "no", "adı soyadı", "bölüm kodu", "fazla","mesai", "mesaide yapılacak işler",
+                     "kullanılan servis"]
+        array = []
+        for i in new_data:
+            array.append(i)
+
+
+        counterx = [0,0]
+        countery = 0
+        name_counter =0
+        header_len = 16
+        space = 20
+        self.pdf.set_font_size(8)
+        dikey_extra = 0
+        for data_names in new_data:
+            print(new_data)
+            if ((countery +len(new_data[array[name_counter]]) * 5 + header_len + space)> 200):
+                if counterx[0] == 0:
+                    countery = 0
+                    counterx = [1,150]
+                else:
+                    countery = 0
+                    counterx = [0, 0]
+                    self.pdf.add_page()
+                    self.create_header()
+
+            self.create_work_header(sec_names, data_names,ykaydirma=countery,xkaydirma=counterx[1])
+            self.create_wowk_lines(countery * 2, counterx[1] * 2)#,dikey_eksen_uzunlugu=(len(new_data[array[name_counter]]) * 5))
+
+            dikey_extra = 0
+
+            for data in new_data[data_names]:
+                if ((countery + len(new_data[array[name_counter]]) * 5 + header_len) > 200):
+                    if counterx[0] == 0:
+                        countery = 0
+                        counterx = [1, 150]
+                        self.create_header()
+                        self.create_work_header(sec_names, data_names, ykaydirma=countery, xkaydirma=counterx[1])
+                        self.create_wowk_lines(countery * 2, counterx[1] * 2)
+                        dikey_extra = 0
+                    else:
+                        countery = 0
+                        counterx = [0, 0]
+                        self.pdf.add_page()
+                        self.create_header()
+                        self.create_work_header(sec_names, data_names, ykaydirma=countery, xkaydirma=counterx[1])
+                        self.create_wowk_lines(countery * 2, counterx[1] * 2)
+                        dikey_extra = 0
+
+                extra = self.write_text(data,ykaydirma=countery,xkaydirma=counterx[1])
+                countery += (5 + extra)
+                dikey_extra += extra
+
+
+
+            countery += 20
+            #self.pdf.line(142 + xkaydirma, 37 + ykaydirma, 142 + xkaydirma, 53 + ykaydirma + dikey_eksen_uzunlugu)
+            name_counter +=1
+
+
+
+        #self.pdf.line(151, 40, 293, 40)
+        self.pdf.output(name)
+    def create_work_header(self,sec_names,sec_name,ykaydirma=0,xkaydirma=0):
+        self.pdf.set_font_size(8)
+        self.pdf.text(55 + xkaydirma, 41+ykaydirma,(sec_names[0] + ":     " + sec_name).upper().translate(self.Tr2Eng))
+        self.pdf.text( 5+ xkaydirma, 49 + ykaydirma, (sec_names[1]).upper().translate(self.Tr2Eng))
+        self.pdf.text(15 + xkaydirma, 49 + ykaydirma, (sec_names[2]).upper().translate(self.Tr2Eng))
+        self.pdf.text(36 + xkaydirma, 49 + ykaydirma, (sec_names[3]).upper().translate(self.Tr2Eng))
+        self.pdf.text(60 + xkaydirma, 47 + ykaydirma, (sec_names[4]).upper().translate(self.Tr2Eng))
+        self.pdf.text(60 + xkaydirma, 51 + ykaydirma, (sec_names[5]).upper().translate(self.Tr2Eng))
+        self.pdf.text(73 + xkaydirma, 49 + ykaydirma, (sec_names[6]).upper().translate(self.Tr2Eng))
+        self.pdf.text(113 + xkaydirma, 49 + ykaydirma, (sec_names[7]).upper().translate(self.Tr2Eng))
+
+
+    def create_wowk_lines(self,ykaydirma=0,xkaydirma=0,dikey_eksen_uzunlugu=0):
+        xkaydirma /= 2
+        ykaydirma /= 2
+        # yataylar
+        self.pdf.line(2+xkaydirma, 37+ykaydirma, 142+xkaydirma, 37+ykaydirma)
+        self.pdf.line(2+xkaydirma, 43+ykaydirma, 142+xkaydirma, 43+ykaydirma)
+        self.pdf.line(2+xkaydirma, 53+ykaydirma, 142+xkaydirma, 53+ykaydirma)
+        #dikeyler
+        self.pdf.line(2+xkaydirma, 37+ykaydirma, 2+xkaydirma, 53+ykaydirma+dikey_eksen_uzunlugu)
+        self.pdf.line(12+xkaydirma, 43+ykaydirma, 12+xkaydirma, 53+ykaydirma+dikey_eksen_uzunlugu)
+        self.pdf.line(33+xkaydirma, 43+ykaydirma, 33+xkaydirma, 53+ykaydirma+dikey_eksen_uzunlugu)
+        self.pdf.line(57+xkaydirma, 43+ykaydirma, 57+xkaydirma, 53+ykaydirma+dikey_eksen_uzunlugu)
+        self.pdf.line(72+xkaydirma, 43+ykaydirma, 72+xkaydirma, 53+ykaydirma+dikey_eksen_uzunlugu)
+        self.pdf.line(112+xkaydirma, 43+ykaydirma, 112+xkaydirma, 53+ykaydirma+dikey_eksen_uzunlugu)
+        self.pdf.line(142+xkaydirma, 37+ykaydirma, 142+xkaydirma, 53+ykaydirma+dikey_eksen_uzunlugu)
+    def create_work_header_columns(self,ykaydirma=0,xkaydirma=0,dikey_eksen_uzunlugu=0):
+        self.pdf.line(2 + xkaydirma, 37 + ykaydirma, 2 + xkaydirma, 53 + ykaydirma + dikey_eksen_uzunlugu)
+        self.pdf.line(12 + xkaydirma, 43 + ykaydirma, 12 + xkaydirma, 53 + ykaydirma + dikey_eksen_uzunlugu)
+        self.pdf.line(33 + xkaydirma, 43 + ykaydirma, 33 + xkaydirma, 53 + ykaydirma + dikey_eksen_uzunlugu)
+        self.pdf.line(57 + xkaydirma, 43 + ykaydirma, 57 + xkaydirma, 53 + ykaydirma + dikey_eksen_uzunlugu)
+        self.pdf.line(72 + xkaydirma, 43 + ykaydirma, 72 + xkaydirma, 53 + ykaydirma + dikey_eksen_uzunlugu)
+        self.pdf.line(112 + xkaydirma, 43 + ykaydirma, 112 + xkaydirma, 53 + ykaydirma + dikey_eksen_uzunlugu)
+        self.pdf.line(142 + xkaydirma, 37 + ykaydirma, 142 + xkaydirma, 53 + ykaydirma + dikey_eksen_uzunlugu)
+    def split_by_space(self,text,karekter_siniri):
+
+        space = text.count(" ")
+        text = text.split(" ")
+        return_text = []
+        counter = 0
+        text_ = ""
+        while counter < space:
+            if len(text) > counter:
+                if len(text_ + " " + text[counter]) > karekter_siniri:
+                    return_text.append(text_)
+                    text_ = text[counter]
+                else:
+                    text_ += (" " +text[counter])
+            counter += 1
+
+        return_text.append(text_)
+
+        return return_text
+    def split_by_lenght(self,text,karekter_siniri):
+        text_ = ""
+        return_text = []
+        for i in text:
+            text_ += i
+            if len(text_) == karekter_siniri:
+                return_text.append(text_)
+                text_ = ""
+        if text_ != "":
+            return_text.append(text_)
+        return return_text
+    def align(self, sec_names, ykaydirma=0, xkaydirma=0):
+        self.pdf.set_font_size(7)
+        fake_ykaydirma = 0
+        fake_ykaydirma_2 = 0
+        control = [0,0,0,0,0,0,0]
+        text = sec_names[5].translate(self.Tr2Eng)
+        if len(text) > 34:
+            result = self.split_by_space(text, 34)
+            for i in result:
+                fake_ykaydirma_2 += 2.5
+
+        if fake_ykaydirma_2 > fake_ykaydirma:
+            fake_ykaydirma = fake_ykaydirma_2
+            fake_ykaydirma_2 = 0
+        control[5] = fake_ykaydirma
+
+        text = (sec_names[1]).translate(self.Tr2Eng)
+        if len(text) > 12:
+            result = self.split_by_space(text,15)
+            for text in result:
+                fake_ykaydirma_2 +=2
+        else:
+            pass
+        control[1] = fake_ykaydirma_2
+        if fake_ykaydirma_2 > fake_ykaydirma:
+            fake_ykaydirma = fake_ykaydirma_2
+            fake_ykaydirma_2 = 0
+
+        text = (sec_names[2]).translate(self.Tr2Eng)
+        if len(text) > 12:
+            result = self.split_by_space(text, 15)
+            for text in result:
+                fake_ykaydirma_2 += 2
+        control[2] = fake_ykaydirma_2
+        if fake_ykaydirma_2 > fake_ykaydirma:
+            fake_ykaydirma = fake_ykaydirma_2
+            fake_ykaydirma_2 = 0
+
+
+        text = (sec_names[6]).translate(self.Tr2Eng)
+        if len(text) > 31:
+            result = self.split_by_space(text, 27)
+            for text in result:
+                fake_ykaydirma_2 += 2
+        control[6] = fake_ykaydirma_2
+
+        if fake_ykaydirma_2 > fake_ykaydirma:
+            fake_ykaydirma = fake_ykaydirma_2
+            fake_ykaydirma_2 = 0
+        return  control,fake_ykaydirma
+    def write_text(self, sec_names, ykaydirma=0, xkaydirma=0):
+        control,align = self.align(sec_names,ykaydirma,xkaydirma)
+        align = max(control)
+
+        #align = control.sort()
+        self.pdf.set_font_size(6)
+        fake_ykaydirma = 0
+        fake_ykaydirma_2 = 0
+        #------------------------------------------------------------
+        text = sec_names[5].translate(self.Tr2Eng) # mesaide yapılacka işler
+        if control[5] == align:
+            ortalama=0
+        else:
+            ortalama = align
+        if len(text) > 34:
+            result = self.split_by_space(text, 34)
+            for i in result:
+                self.pdf.text(73 + xkaydirma, 57 + ykaydirma + fake_ykaydirma+ortalama/2, (i))
+                fake_ykaydirma += 2.5
+        else:
+            self.pdf.text(73 + xkaydirma, 56 + ykaydirma + ortalama/2, (text))
+        # ------------------------------------------------------------
+        ortalama = align
+        if int(sec_names[0]) > 99:
+            self.pdf.text(4 + xkaydirma, 55 + ykaydirma+ortalama/2, (sec_names[0]))
+        elif int(sec_names[0]) > 9:
+            self.pdf.text(5 + xkaydirma, 55 + ykaydirma+ortalama/2, (sec_names[0]))
+        else:
+            self.pdf.text(5 + xkaydirma, 55 + ykaydirma+ortalama/2, (sec_names[0]))
+        # ------------------------------------------------------------
+        text = (sec_names[1]).translate(self.Tr2Eng) #adi soyadi
+        if control[1] == align:
+            ortalama=0
+        else:
+            ortalama = align
+        if len(text) > 15:
+            result = self.split_by_space(text,15)
+            for text in result:
+                self.pdf.text(13 + xkaydirma, 55 + ykaydirma+fake_ykaydirma_2+ortalama/2, text)
+                fake_ykaydirma_2 +=2
+        else:
+            self.pdf.text(13 + xkaydirma, 55 + ykaydirma+ortalama/2, text)
+        # ------------------------------------------------------------
+        text = (sec_names[2]).translate(self.Tr2Eng) # bolum kodu
+        if control[2] == align:
+            ortalama = 0
+        else:
+            ortalama = align
+        if len(text) > 24:
+            result = self.split_by_space(text, 24)
+            for text in result:
+                self.pdf.text(34 + xkaydirma, 55 + ykaydirma+fake_ykaydirma_2+ortalama/2, text)
+                fake_ykaydirma_2 += 2
+        else:
+            self.pdf.text(34 + xkaydirma, 56 + ykaydirma + ortalama/2, text)
+        # ------------------------------------------------------------
+        text = str(sec_names[4]) # fazla mesai
+        if "-" in text:
+            text = text.split("-")
+            self.pdf.text(62 + xkaydirma, 56 + ykaydirma+ortalama/2, (text[0].strip()))
+            self.pdf.text(62 + xkaydirma, 58 + ykaydirma+ortalama/2, (text[1].strip()))
+        else:
+            self.pdf.text(64 + xkaydirma, 56 + ykaydirma+ortalama/2, (sec_names[4]))
+
+        # ------------------------------------------------------------
+        self.pdf.text(113 + xkaydirma, 56 + ykaydirma+ortalama/2, (sec_names[6]).translate(self.Tr2Eng)) # kullanılan servis
+        # ------------------------------------------------------------
+
+        self.pdf.line(2 + xkaydirma, 58 + ykaydirma+align, 142 + xkaydirma, 58 + ykaydirma+align)
+        self.create_work_header_columns(xkaydirma=xkaydirma,ykaydirma=ykaydirma,dikey_eksen_uzunlugu=align+5)
+
+
+
+        return align
+    def create_header(self):
+        # header
+        # yataylar
+
+        self.pdf.line(2, 3, 295, 3)  # x1 y1 x2 y2
+        self.pdf.image("pics/ortac.png", x=5, y=5, w=37, h=14)
+        self.pdf.line(2, 23, 295, 23)
+        self.pdf.line(2, 30, 295, 30)
+        for i in range(0, 21, 5):
+            self.pdf.line(200, 3 + i, 295, 3 + i)
+        # dikeyler
+        self.pdf.line(2, 3, 2, 30)
+        self.pdf.line(45, 3, 45, 23)
+        self.pdf.line(200, 3, 200, 23)
+        self.pdf.line(295, 3, 295, 30)
+
+        # yazılar
+
+        self.pdf.set_font_size(15)
+        self.pdf.text(70, 15, "FAZLA MESAI YOL YEMEK MASRAF FORMU")
+        self.pdf.set_font_size(10)
+        self.pdf.text(220, 7,"Yayin Tarihi : 15.03.2012")
+        self.pdf.text(220, 12, "Rev. No:2")
+        self.pdf.text(220, 17, "Rev. Tarihi: 15.08.2018")
+        self.pdf.text(220, 22, "Sayfa : 1/1")
+        self.pdf.set_font_size(20)
+        self.pdf.text(100, 29, str(datetime.now().strftime("%d %B %y %A")))
+
+
 if __name__ == "__main__":
     root = Tk()
     root.geometry("1000x900")
